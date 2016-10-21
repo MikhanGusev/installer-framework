@@ -43,6 +43,8 @@
 #include <QTemporaryFile>
 #include <QTimer>
 
+#include "ngauth/ngaccess.h"
+
 namespace QInstaller {
 
 AuthenticationRequiredException::AuthenticationRequiredException(Type type, const QString &message)
@@ -54,12 +56,16 @@ AuthenticationRequiredException::AuthenticationRequiredException(Type type, cons
 Downloader::Downloader()
     : m_finished(0)
 {
-    connect(&m_nam, SIGNAL(finished(QNetworkReply*)), SLOT(onFinished(QNetworkReply*)));
+    // NGI: replace network access manager with global one.
+    //connect(&m_nam, SIGNAL(finished(QNetworkReply*)), SLOT(onFinished(QNetworkReply*)));
+    connect(&NgAccess::manager, SIGNAL(finished(QNetworkReply*)), SLOT(onFinished(QNetworkReply*)));
 }
 
 Downloader::~Downloader()
 {
-    m_nam.disconnect();
+    // NGI: replace network access manager with global one.
+    //m_nam.disconnect();
+    NgAccess::manager.disconnect();
     for (const auto &pair : m_downloads) {
         pair.first->disconnect();
         pair.first->abort();
@@ -76,10 +82,16 @@ void Downloader::download(QFutureInterface<FileTaskResult> &fi, const QList<File
     fi.reportStarted();
     fi.setExpectedResultCount(items.count());
 
-    m_nam.setProxyFactory(networkProxyFactory);
-    connect(&m_nam, SIGNAL(authenticationRequired(QNetworkReply*,QAuthenticator*)), this,
+    // NGI: replace network access manager with global one.
+    //m_nam.setProxyFactory(networkProxyFactory);
+    //connect(&m_nam, SIGNAL(authenticationRequired(QNetworkReply*,QAuthenticator*)), this,
+    //    SLOT(onAuthenticationRequired(QNetworkReply*,QAuthenticator*)));
+    //connect(&m_nam, SIGNAL(proxyAuthenticationRequired(QNetworkProxy,QAuthenticator*)), this,
+    //        SLOT(onProxyAuthenticationRequired(QNetworkProxy,QAuthenticator*)));
+    NgAccess::manager.setProxyFactory(networkProxyFactory);
+    connect(&NgAccess::manager, SIGNAL(authenticationRequired(QNetworkReply*,QAuthenticator*)), this,
         SLOT(onAuthenticationRequired(QNetworkReply*,QAuthenticator*)));
-    connect(&m_nam, SIGNAL(proxyAuthenticationRequired(QNetworkProxy,QAuthenticator*)), this,
+    connect(&NgAccess::manager, SIGNAL(proxyAuthenticationRequired(QNetworkProxy,QAuthenticator*)), this,
             SLOT(onProxyAuthenticationRequired(QNetworkProxy,QAuthenticator*)));
     QTimer::singleShot(0, this, SLOT(doDownload()));
 }
@@ -340,7 +352,9 @@ QNetworkReply *Downloader::startDownload(const FileTaskItem &item)
         return 0;
     }
 
-    QNetworkReply *reply = m_nam.get(QNetworkRequest(source));
+    // NGI: replace network access manager with global one.
+    //QNetworkReply *reply = m_nam.get(QNetworkRequest(source));
+    QNetworkReply *reply = NgAccess::manager.get(QNetworkRequest(source));
     std::unique_ptr<Data> data(new Data(item));
     m_downloads[reply] = std::move(data);
 

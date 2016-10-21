@@ -81,13 +81,14 @@ win32-g++*:QMAKE_CXXFLAGS += -Wno-attributes
 INCLUDEPATH += \
     $$IFW_SOURCE_TREE/src/libs/7zip \
     $$IFW_SOURCE_TREE/src/libs/kdtools \
-    $$IFW_SOURCE_TREE/src/libs/installer
+    $$IFW_SOURCE_TREE/src/libs/installer \
+    $$IFW_SOURCE_TREE/src/libs/ngauth
 win32:INCLUDEPATH += $$IFW_SOURCE_TREE/src/libs/7zip/win/CPP
 unix:INCLUDEPATH += $$IFW_SOURCE_TREE/src/libs/7zip/unix/CPP
 
 LIBS += -L$$IFW_LIB_PATH
 # The order is important. The linker needs to parse archives in reversed dependency order.
-equals(TEMPLATE, app):LIBS += -linstaller
+equals(TEMPLATE, app):LIBS += -linstaller -lngauth
 win32:equals(TEMPLATE, app) {
     LIBS += -luser32
 }
@@ -115,7 +116,7 @@ exists(".git") {
     GIT_SHA1 = $$system(git rev-list --abbrev-commit -n1 HEAD)
 }
 
-### Removed because of an error: https://bugreports.qt.io/browse/QTIFW-852
+### NGI: Removed because of an error: https://bugreports.qt.io/browse/QTIFW-852
 ###isEmpty(GIT_SHA1) {
     # Attempt to read the sha1 from alternative location
 ###    GIT_SHA1=\"$$cat(.tag)\"
@@ -130,7 +131,7 @@ static {
     win32-g++*: LIBS += -lmpr -luuid
 
     equals(TEMPLATE, app) {
-        win32-msvc*:POST_TARGETDEPS += $$IFW_LIB_PATH/installer.lib $$IFW_LIB_PATH/7z.lib
+        win32-msvc*:POST_TARGETDEPS += $$IFW_LIB_PATH/installer.lib $$IFW_LIB_PATH/ngauth.lib $$IFW_LIB_PATH/7z.lib
         win32-g++*:POST_TARGETDEPS += $$IFW_LIB_PATH/libinstaller.a $$IFW_LIB_PATH/lib7z.a
         unix:POST_TARGETDEPS += $$IFW_LIB_PATH/libinstaller.a $$IFW_LIB_PATH/lib7z.a
     }

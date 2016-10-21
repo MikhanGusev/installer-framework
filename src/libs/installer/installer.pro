@@ -124,7 +124,8 @@ HEADERS += packagemanagercore.h \
     serverauthenticationdialog.h \
     keepaliveobject.h \
     systeminfo.h \
-    localsocket.h
+    localsocket.h \
+    ng_authpage.h
 
 SOURCES += packagemanagercore.cpp \
     packagemanagercore_p.cpp \
@@ -198,7 +199,8 @@ SOURCES += packagemanagercore.cpp \
     proxycredentialsdialog.cpp \
     serverauthenticationdialog.cpp \
     keepaliveobject.cpp \
-    systeminfo.cpp
+    systeminfo.cpp \
+    ng_authpage.cpp
 
 FORMS += proxycredentialsdialog.ui \
     serverauthenticationdialog.ui

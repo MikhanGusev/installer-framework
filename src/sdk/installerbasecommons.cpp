@@ -37,6 +37,8 @@
 #include <packagemanagerpagefactory.h>
 #include <productkeycheck.h>
 
+#include <ng_authpage.h>
+
 using namespace QInstaller;
 
 
@@ -53,6 +55,9 @@ InstallerGui::InstallerGui(PackageManagerCore *core)
         setPage(id, page);
     }
 
+    // NGI: add NextGIS Auth page.
+    setPage(0x500, new NextgisAuthPage(core));
+
     setPage(PackageManagerCore::Introduction, new IntroductionPage(core));
     setPage(PackageManagerCore::TargetDirectory, new TargetDirectoryPage(core));
     setPage(PackageManagerCore::ComponentSelection, new ComponentSelectionPage(core));
@@ -63,6 +68,8 @@ InstallerGui::InstallerGui(PackageManagerCore *core)
     setPage(PackageManagerCore::ReadyForInstallation, new ReadyForInstallationPage(core));
     setPage(PackageManagerCore::PerformInstallation, new PerformInstallationPage(core));
     setPage(PackageManagerCore::InstallationFinished, new FinishedPage(core));
+
+
 
     foreach (const int id, pageIds()) {
         QWizardPage *wizardPage = page(id);

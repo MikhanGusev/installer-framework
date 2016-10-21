@@ -105,7 +105,10 @@ private:
     QFutureInterface<FileTaskResult> *m_futureInterface;
 
     int m_finished;
-    QNetworkAccessManager m_nam;
+
+    // NGI: replace network manager with global one.
+    //QNetworkAccessManager m_nam;
+
     QList<FileTaskItem> m_items;
     QMultiHash<QNetworkReply*, QUrl> m_redirects;
     std::unordered_map<QNetworkReply*, std::unique_ptr<Data>> m_downloads;

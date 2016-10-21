@@ -51,6 +51,8 @@
 #include <QBasicTimer>
 #include <QTimerEvent>
 
+#include "ngauth/ngaccess.h"
+
 using namespace KDUpdater;
 using namespace QInstaller;
 
@@ -1048,7 +1050,10 @@ struct KDUpdater::HttpDownloader::Private
     {}
 
     HttpDownloader *const q;
-    QNetworkAccessManager manager;
+
+    // NGI: replace network manager with global one.
+    //QNetworkAccessManager manager;
+
     QNetworkReply *http;
     QFile *destination;
     QString destFileName;
@@ -1076,10 +1081,15 @@ KDUpdater::HttpDownloader::HttpDownloader(QObject *parent)
     , d(new Private(this))
 {
 #ifndef QT_NO_SSL
-    connect(&d->manager, SIGNAL(sslErrors(QNetworkReply*, QList<QSslError>)),
+    // NGI: replace network access manager with global one.
+    //connect(&d->manager, SIGNAL(sslErrors(QNetworkReply*, QList<QSslError>)),
+    //    this, SLOT(onSslErrors(QNetworkReply*, QList<QSslError>)));
+    connect(&NgAccess::manager, SIGNAL(sslErrors(QNetworkReply*, QList<QSslError>)),
         this, SLOT(onSslErrors(QNetworkReply*, QList<QSslError>)));
 #endif
-    connect(&d->manager, SIGNAL(authenticationRequired(QNetworkReply*, QAuthenticator*)), this,
+    //connect(&d->manager, SIGNAL(authenticationRequired(QNetworkReply*, QAuthenticator*)), this,
+    //    SLOT(onAuthenticationRequired(QNetworkReply*, QAuthenticator*)));
+    connect(&NgAccess::manager, SIGNAL(authenticationRequired(QNetworkReply*, QAuthenticator*)), this,
         SLOT(onAuthenticationRequired(QNetworkReply*, QAuthenticator*)));
 }
 
@@ -1289,8 +1299,11 @@ void KDUpdater::HttpDownloader::timerEvent(QTimerEvent *event)
 void KDUpdater::HttpDownloader::startDownload(const QUrl &url)
 {
     d->m_authenticationCount = 0;
-    d->manager.setProxyFactory(proxyFactory());
-    d->http = d->manager.get(QNetworkRequest(url));
+    // NGI: replace network access manager with global one.
+    //d->manager.setProxyFactory(proxyFactory());
+    //d->http = d->manager.get(QNetworkRequest(url));
+    NgAccess::manager.setProxyFactory(proxyFactory());
+    d->http = NgAccess::manager.get(QNetworkRequest(url));
 
     connect(d->http, SIGNAL(readyRead()), this, SLOT(httpReadyRead()));
     connect(d->http, SIGNAL(downloadProgress(qint64, qint64)), this,

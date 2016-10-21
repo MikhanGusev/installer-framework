@@ -1498,7 +1498,8 @@ void IntroductionPage::setUpdater(bool value)
 {
     if (value) {
         entering();
-        gui()->showSettingsButton(true);
+        // NGI: hide settings button.
+        gui()->showSettingsButton(false); //gui()->showSettingsButton(true);
         packageManagerCore()->setUpdater();
         emit packageManagerCoreTypeChanged();
     }
@@ -1518,7 +1519,8 @@ void IntroductionPage::setPackageManager(bool value)
 {
     if (value) {
         entering();
-        gui()->showSettingsButton(true);
+        // NGI: hide settings button.
+        gui()->showSettingsButton(false); //gui()->showSettingsButton(true);
         packageManagerCore()->setPackageManager();
         emit packageManagerCoreTypeChanged();
     }
