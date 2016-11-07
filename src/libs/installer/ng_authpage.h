@@ -66,7 +66,6 @@ class INSTALLER_EXPORT NextgisAuthPage : public PackageManagerPage
      QTextEdit *_test_textEdit;
 
      QByteArray m_baReceived;
-     //QNetworkAccessManager m_netManager;
      QNetworkReply *m_netReply;
      QNetworkReply *m_netReply2;
 

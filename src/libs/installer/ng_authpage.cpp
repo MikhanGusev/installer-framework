@@ -20,6 +20,8 @@
 #include "ng_authpage.h"
 #include "ngauth/ngaccess.h"
 
+#include"ngauth/simplecrypt.h"
+
 #include <QVBoxLayout>
 #include <QFormLayout>
 #include <QLabel>
@@ -33,6 +35,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
+#include <QSettings>
+
 using namespace QInstaller;
 
 #define NG_URL_FORGOT "https://my.nextgis.com/password/reset/"
@@ -40,7 +44,10 @@ using namespace QInstaller;
 
 //#define NG_URL_LOGIN "https://my.nextgis.com/login/"
 #define NG_URL_LOGIN "https://my.nextgis.com/api/v1/simple_auth/"
-#define NG_COOKIE_CSRF "csrftoken"
+#define NG_COOKIE_CSRF "ngid_csrftoken"
+
+#define NG_SETTINGS_LOGIN "login"
+#define NG_SETTINGS_PASSWORD "password"
 
 NextgisAuthPage::NextgisAuthPage (PackageManagerCore *core)
     : PackageManagerPage (core)
@@ -202,7 +209,6 @@ void NextgisAuthPage::onReplyFinished ()
             + m_eLogin->text().toUtf8()
             + QString::fromUtf8("&password=").toUtf8()
             + m_ePassword->text().toUtf8()
-            //+ QString::fromUtf8("&next=/profile").toUtf8()
             + QString::fromUtf8("&csrfmiddlewaretoken=").toUtf8()
             + strCsrf.toUtf8();
     request.setHeader(QNetworkRequest::ContentTypeHeader,
@@ -245,6 +251,20 @@ void NextgisAuthPage::onReply2Finished ()
         return;
     }
 
+    // Save login and password to the settings file.
+    SimpleCrypt crypto;
+    crypto.setKey(Q_UINT64_C(0x0c2ad4a4acb9f023)); // TEMP
+    QString loginToSave = crypto.encryptToString(
+                QString::fromUtf8(m_eLogin->text().toUtf8().data()));
+    QString passToSave = crypto.encryptToString(
+                QString::fromUtf8(m_ePassword->text().toUtf8().data()));
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope,
+                       QString::fromUtf8("NextGIS"),
+                       QString::fromUtf8("Common"));
+    settings.setValue(QString::fromUtf8(NG_SETTINGS_LOGIN),loginToSave);
+    settings.setValue(QString::fromUtf8(NG_SETTINGS_PASSWORD),passToSave);
+
+    // Show success info.
     // TODO: show required information to user.
     m_labInfo->setText(tr("Authorization successful."
                           "\nClick Next to continue installation"));
@@ -264,6 +284,9 @@ void NextgisAuthPage::_readReply (QNetworkReply *reply)
 
 void NextgisAuthPage::_authFailed (QNetworkReply *replyToDelete)
 {
+    //_test_textEdit->setText(QString::fromUtf8(replyToDelete->errorString().toUtf8().data()));
+    _test_textEdit->setText(QString::fromUtf8(m_baReceived));
+
     // TODO: show error info and suggested actions for user.
     m_labInfo->setText(tr("Error connecting to server"));
     m_bpAuth->setEnabled(true);
