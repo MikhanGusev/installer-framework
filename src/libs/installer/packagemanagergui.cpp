@@ -79,6 +79,8 @@
 # include <QWinTaskbarProgress>
 #endif
 
+#include "ngaccess.h"
+
 using namespace KDUpdater;
 using namespace QInstaller;
 
@@ -1270,6 +1272,9 @@ IntroductionPage::IntroductionPage(PackageManagerCore *core)
         m_taskButton = 0;
     }
 #endif
+
+    // NGI: added for page skipping.
+    m_visited = false;
 }
 
 /*!
@@ -1557,6 +1562,26 @@ void IntroductionPage::entering()
         setMaintenanceToolsEnabled(true);
     }
     setSettingsButtonRequested((!core->isOfflineOnly()) && (!core->isUninstaller()));
+
+    // NGI: skip this page if this is an installer.
+    if (core->isInstaller())
+    {
+        if (!m_visited)
+        {
+            m_visited = true;
+            this->gui()->clickButton(QWizard::NextButton);
+        }
+        else
+        {
+            m_visited = false;
+            this->gui()->clickButton(QWizard::BackButton);
+        }
+    }
+
+    // NGI: disable update radio buttons so user can at least select uninstalling
+    // when the authorization failed.
+    m_packageManager->setEnabled(NgAccess::authenticated);
+    m_updateComponents->setEnabled(NgAccess::authenticated);
 }
 
 /*!

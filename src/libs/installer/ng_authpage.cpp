@@ -18,9 +18,6 @@
 *****************************************************************************/
 
 #include "ng_authpage.h"
-#include "ngauth/ngaccess.h"
-
-#include"ngauth/simplecrypt.h"
 
 #include <QVBoxLayout>
 #include <QFormLayout>
@@ -28,31 +25,14 @@
 #include <QLineEdit>
 #include <QPushButton>
 
-#include <QUrl>
-#include <QNetworkCookie>
-#include <QNetworkReply>
-
-#include <QJsonDocument>
-#include <QJsonObject>
-
-#include <QSettings>
 
 using namespace QInstaller;
 
-#define NG_URL_FORGOT "https://my.nextgis.com/password/reset/"
-#define NG_URL_REGISTER "https://my.nextgis.com/signup/"
-
-//#define NG_URL_LOGIN "https://my.nextgis.com/login/"
-#define NG_URL_LOGIN "https://my.nextgis.com/api/v1/simple_auth/"
-#define NG_COOKIE_CSRF "ngid_csrftoken"
-
-#define NG_SETTINGS_LOGIN "login"
-#define NG_SETTINGS_PASSWORD "password"
 
 NextgisAuthPage::NextgisAuthPage (PackageManagerCore *core)
     : PackageManagerPage (core)
 {
-    m_isAuthorized = false;
+    m_isInstaller = core->isInstaller();
 
     //setPixmap(QWizard::WatermarkPixmap, QPixmap());
     setObjectName(QLatin1String("NextgisAuthPage"));
@@ -69,10 +49,6 @@ NextgisAuthPage::NextgisAuthPage (PackageManagerCore *core)
 
     m_ePassword = new QLineEdit(this);
     m_ePassword->setEchoMode(QLineEdit::Password);
-
-    m_bpAuth = new QPushButton(this);
-    m_bpAuth->setText(tr("Authorize"));
-    connect(m_bpAuth, SIGNAL(clicked()), this, SLOT(onAuthClicked()));
 
     m_labInfo = new QLabel(this);
     m_labInfo->setText(tr(""));
@@ -101,197 +77,74 @@ NextgisAuthPage::NextgisAuthPage (PackageManagerCore *core)
 
     QVBoxLayout *lvAll = new QVBoxLayout();
     lvAll->addLayout(lfAuth);
-    lvAll->addWidget(m_bpAuth);
     lvAll->addWidget(m_labForgot);
     lvAll->addWidget(m_labGet);
     lvAll->addStretch();
     lvAll->addWidget(m_labInfo);
     lvAll->addWidget(_test_textEdit);
 
-    //QVBoxLayout *lvLinks = new QVBoxLayout();
-    //lvLinks->addWidget(m_labForgot);
-    //lvLinks->addWidget(m_labGet);
-    //lvLinks->addStretch();
-
     QHBoxLayout *lhMain = new QHBoxLayout(this);
     lhMain->addStretch();
     lhMain->addLayout(lvAll);
     lhMain->addStretch();
-    //lhMain->addLayout(lvLinks);
 
-    _test_textEdit->hide();
+    //_test_textEdit->hide();
+
+    m_ngAccessPtr = new NgAccess();
+
+    // If this is not an installer:
+    // Load last entered login and password.
+    if (!m_isInstaller)
+    {
+        m_ngAccessPtr->readAuthData();
+        m_eLogin->setText(m_ngAccessPtr->getCurLogin());
+        m_ePassword->setText(m_ngAccessPtr->getCurPassword());
+    }
 }
 
-
-bool NextgisAuthPage::isComplete () const
+NextgisAuthPage::~NextgisAuthPage ()
 {
-    return m_isAuthorized;
+    delete m_ngAccessPtr;
 }
 
 
-void NextgisAuthPage::leaving ()
-{
-    // TODO: implement the following.
-    // Write required NextGIS parameters when leaving this page.
-
-    //packageManagerCore()->setValue(scNgwLogin, login);
-    //packageManagerCore()->setValue(scNgwPassword, password);
-}
-
-
-void NextgisAuthPage::onAuthClicked ()
+bool NextgisAuthPage::validatePage ()
 {
     m_labInfo->setText(tr("Connecting ..."));
-    m_bpAuth->setEnabled(false);
-    m_isAuthorized = false;
-    emit completeChanged();
 
-    // Make first (from two) GET request.
-    m_baReceived.clear();
-    QUrl url;
-    url.setUrl(QString::fromUtf8(NG_URL_LOGIN));
-    QNetworkRequest request(url);
-    m_netReply = NgAccess::manager.get(request);
-    QObject::connect(m_netReply, SIGNAL(finished()),
-                     this, SLOT(onReplyFinished()));
-    QObject::connect(m_netReply, SIGNAL(readyRead()),
-                     this, SLOT(onReplyReadyRead()));
-}
+    this->gui()->button(QWizard::NextButton)->setEnabled(false);
 
+    // Wait for the end of the NextGIS authentication.
+    QEventLoop eventLoop;
+    connect(m_ngAccessPtr, SIGNAL(authFinished()), &eventLoop, SLOT(quit()));
+    QString login = QString::fromUtf8(m_eLogin->text().toUtf8());
+    QString password = QString::fromUtf8(m_ePassword->text().toUtf8());
+    m_ngAccessPtr->startAuthetication(login, password);
+    eventLoop.exec();
 
-void NextgisAuthPage::onReplyReadyRead ()
-{
-    this->_readReply(m_netReply);
-}
+    this->gui()->button(QWizard::NextButton)->setEnabled(true);
 
-void NextgisAuthPage::onReply2ReadyRead ()
-{
-    this->_readReply(m_netReply2);
-}
-
-
-void NextgisAuthPage::onReplyFinished ()
-{
-    if (m_netReply->error() != QNetworkReply::NoError)
+    if (!NgAccess::authenticated)
     {
-        this->_authFailed(m_netReply);
-        return;
+        m_labInfo->setText(tr("Error connecting to server"));
+
+        _test_textEdit->setText(NgAccess::_received);
+        m_labInfo->setText(NgAccess::_error);
+
+        // If this is not an installer:
+        // Always allow to switch to the next page so user could perform an
+        // unistallation of the programs. The according update and add/remove
+        // radio buttons will be disabled - see Introduction Page class for that.
+        if (!m_isInstaller)
+            return true;
+
+        return false;
     }
 
-    // Get cookie for csrftoken.
-    QVariant va = m_netReply->header(QNetworkRequest::SetCookieHeader);
-    QString strCsrf = QString::fromUtf8("");
-    if (va.isValid())
-    {
-        QList<QNetworkCookie> cookies = va.value<QList<QNetworkCookie> >();
-        foreach (QNetworkCookie cookie, cookies)
-        {
-            if (QString::fromUtf8(cookie.name())
-                    == QString::fromUtf8(NG_COOKIE_CSRF))
-            {
-                strCsrf = QString::fromUtf8(cookie.value());
-                break;
-            }
-        }
-    }
-    if (strCsrf == QString::fromUtf8(""))
-    {
-        this->_authFailed(m_netReply);
-        return;
-    }
-
-    // Make second (final) POST request if first GET was successful.
-    m_baReceived.clear();
-    QUrl url;
-    url.setUrl(QString::fromUtf8(NG_URL_LOGIN));
-    QNetworkRequest request(url);
-    QByteArray ba = QString::fromUtf8("username=").toUtf8()
-            + m_eLogin->text().toUtf8()
-            + QString::fromUtf8("&password=").toUtf8()
-            + m_ePassword->text().toUtf8()
-            + QString::fromUtf8("&csrfmiddlewaretoken=").toUtf8()
-            + strCsrf.toUtf8();
-    request.setHeader(QNetworkRequest::ContentTypeHeader,
-            QVariant(QString::fromUtf8("application/x-www-form-urlencoded")));
-    request.setRawHeader(QString::fromUtf8("Referer").toUtf8(),
-                         QString::fromUtf8(NG_URL_LOGIN).toUtf8());
-    m_netReply2 = NgAccess::manager.post(request, ba);
-    QObject::connect(m_netReply2, SIGNAL(finished()),
-                     this, SLOT(onReply2Finished()));
-    QObject::connect(m_netReply2, SIGNAL(readyRead()),
-                     this, SLOT(onReply2ReadyRead()));
-
-    m_netReply->deleteLater();
-}
-
-
-void NextgisAuthPage::onReply2Finished ()
-{
-    if (m_netReply2->error() != QNetworkReply::NoError)
-    {
-        this->_authFailed(m_netReply2);
-        return;
-    }
-
-    // Parse reply for authentication errors.
-    _test_textEdit->setText(QString::fromUtf8(m_baReceived));
-    QJsonDocument jDoc = QJsonDocument::fromJson(m_baReceived);
-    if (jDoc.isNull())
-    {
-        this->_authFailed(m_netReply2);
-        return;
-    }
-    QJsonObject jObj = jDoc.object();
-    if (jObj.value(QString::fromUtf8("status")).toString()
-                   != QString::fromUtf8("success"))
-    {
-        this->_authFailed(m_netReply2);
-        m_labInfo->setText(tr("Authorization failed."
-                              "\nLogin and/or password is incorrect"));
-        return;
-    }
-
-    // Save login and password to the settings file.
-    SimpleCrypt crypto;
-    crypto.setKey(Q_UINT64_C(0x0c2ad4a4acb9f023)); // TEMP
-    QString loginToSave = crypto.encryptToString(
-                QString::fromUtf8(m_eLogin->text().toUtf8().data()));
-    QString passToSave = crypto.encryptToString(
-                QString::fromUtf8(m_ePassword->text().toUtf8().data()));
-    QSettings settings(QSettings::IniFormat, QSettings::UserScope,
-                       QString::fromUtf8("NextGIS"),
-                       QString::fromUtf8("Common"));
-    settings.setValue(QString::fromUtf8(NG_SETTINGS_LOGIN),loginToSave);
-    settings.setValue(QString::fromUtf8(NG_SETTINGS_PASSWORD),passToSave);
-
-    // Show success info.
-    // TODO: show required information to user.
     m_labInfo->setText(tr("Authorization successful."
                           "\nClick Next to continue installation"));
-    m_bpAuth->setEnabled(true);
-    m_isAuthorized = true;
-    emit completeChanged();
-    m_netReply2->deleteLater();
+    m_ngAccessPtr->writeAuthData();
+    return true;
 }
 
-
-void NextgisAuthPage::_readReply (QNetworkReply *reply)
-{
-    QByteArray ba;
-    ba = reply->readAll();
-    m_baReceived += ba;
-}
-
-void NextgisAuthPage::_authFailed (QNetworkReply *replyToDelete)
-{
-    //_test_textEdit->setText(QString::fromUtf8(replyToDelete->errorString().toUtf8().data()));
-    _test_textEdit->setText(QString::fromUtf8(m_baReceived));
-
-    // TODO: show error info and suggested actions for user.
-    m_labInfo->setText(tr("Error connecting to server"));
-    m_bpAuth->setEnabled(true);
-    m_isAuthorized = false;
-    emit completeChanged();
-    replyToDelete->deleteLater();
-}
 

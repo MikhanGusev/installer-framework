@@ -20,12 +20,72 @@
 #ifndef NG_ACCESS_H
 #define NG_ACCESS_H
 
-#include <QNetworkAccessManager>
+#include "simplecrypt.h"
 
-class NgAccess
+#include <QString>
+#include <QByteArray>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+
+#define NG_URL_FORGOT "https://my.nextgis.com/password/reset/"
+#define NG_URL_REGISTER "https://my.nextgis.com/signup/"
+//#define NG_URL_LOGIN "https://my.nextgis.com/login/"
+#define NG_URL_LOGIN "https://my.nextgis.com/api/v1/simple_auth/"
+#define NG_COOKIE_CSRF "ngid_csrftoken"
+#define NG_SETTINGS_LOGIN "login"
+#define NG_SETTINGS_PASSWORD "password"
+
+
+class NgAccess: public QObject
 {
+    Q_OBJECT
+
     public:
+
      static QNetworkAccessManager manager;
+     static bool authenticated;
+     static QString _error;
+     static QString _received;
+
+    signals:
+
+     void authFinished ();
+
+    public:
+
+     NgAccess ();
+     ~NgAccess ();
+
+     void startAuthetication (QString login, QString password);
+     void readAuthData ();
+     void writeAuthData ();
+     QString getCurLogin () { return m_curLogin; }
+     QString getCurPassword () { return m_curPassword; }
+
+    private slots:
+
+     void onReplyReadyRead ();
+     void onReply2ReadyRead ();
+     void onReplyFinished ();
+     void onReply2Finished ();
+
+    private:
+
+     void _readReply (QNetworkReply *reply);
+
+    private:
+
+     SimpleCrypt crypto;
+     QString m_curLogin;
+     QString m_curPassword;
+
+     QByteArray m_baReceived;
+     QNetworkReply *m_netReply;
+     QNetworkReply *m_netReply2;
 };
 
 #endif //NG_ACCESS_H
+
+
+
+

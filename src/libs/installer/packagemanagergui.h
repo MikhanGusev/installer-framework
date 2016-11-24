@@ -255,6 +255,9 @@ private:
 #ifdef Q_OS_WIN
     QWinTaskbarButton *m_taskButton;
 #endif
+
+    // NGI: added for page skipping.
+    bool m_visited;
 };
 
 

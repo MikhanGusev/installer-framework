@@ -55,7 +55,7 @@ InstallerGui::InstallerGui(PackageManagerCore *core)
         setPage(id, page);
     }
 
-    // NGI: add NextGIS Auth page.
+    // NGI: add NextGIS authentication page.
     setPage(0x500, new NextgisAuthPage(core));
 
     setPage(PackageManagerCore::Introduction, new IntroductionPage(core));
@@ -92,9 +92,13 @@ MaintenanceGui::MaintenanceGui(PackageManagerCore *core)
         setPage(id, page);
     }
 
+    // NGI: add NextGIS authentication page and start initial authentication
+    // reading login and password from the system.
+    NextgisAuthPage *pageNgAuth = new NextgisAuthPage(core);
+    setPage(0x500, pageNgAuth);
+
     IntroductionPage *intro = new IntroductionPage(core);
     connect(intro, SIGNAL(packageManagerCoreTypeChanged()), this, SLOT(updateRestartPage()));
-
     setPage(PackageManagerCore::Introduction, intro);
     setPage(PackageManagerCore::ComponentSelection, new ComponentSelectionPage(core));
     setPage(PackageManagerCore::LicenseCheck, new LicenseAgreementPage(core));

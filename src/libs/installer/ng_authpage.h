@@ -21,9 +21,7 @@
 #define NG_AUTHPAGE_H
 
 #include "packagemanagergui.h"
-
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
+#include "ngaccess.h"
 
 #include <QTextEdit>
 
@@ -37,39 +35,38 @@ class INSTALLER_EXPORT NextgisAuthPage : public PackageManagerPage
 
     public:
      explicit NextgisAuthPage (PackageManagerCore *core);
-     bool isComplete () const;
+     virtual ~NextgisAuthPage ();
+//     bool isComplete () const;
 
-    protected:
-     void leaving ();
+     bool validatePage ();
+
+//     void startInitialAuth ();
+
+//    protected:
+//     void leaving ();
 
     private slots:
-     void onAuthClicked ();
-     void onReplyReadyRead ();
-     void onReply2ReadyRead ();
-     void onReplyFinished ();
-     void onReply2Finished ();
-
-    private:
-     void _readReply (QNetworkReply *reply);
-     void _authFailed (QNetworkReply *replyToDelete);
-
+//     void onAuthClicked ();
+//     void onAuthFailed ();
+//     void onAuthCompleted ();
+//     void onAuthMaintainerFailed ();
 
     private:
      QLabel *m_labLogin;
      QLineEdit *m_eLogin;
      QLabel *m_labPassword;
      QLineEdit *m_ePassword;
-     QPushButton *m_bpAuth;
+//     QPushButton *m_bpAuth;
      QLabel *m_labInfo;
      QLabel *m_labForgot;
      QLabel *m_labGet;
      QTextEdit *_test_textEdit;
 
-     QByteArray m_baReceived;
-     QNetworkReply *m_netReply;
-     QNetworkReply *m_netReply2;
+     NgAccess *m_ngAccessPtr;
 
-     bool m_isAuthorized;
+//     bool m_isAuthorized;
+
+     bool m_isInstaller;
 };
 
 }
