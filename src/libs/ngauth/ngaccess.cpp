@@ -17,6 +17,8 @@
 *
 *****************************************************************************/
 
+#include <iostream>
+
 #include "ngaccess.h"
 
 #include <QUrl>
@@ -41,7 +43,8 @@ QString NgAccess::_error;
 QString NgAccess::_received;
 
 
-NgAccess::NgAccess ()
+NgAccess::NgAccess ():
+    QObject()
 {
     crypto.setKey(Q_UINT64_C(0x0c2ad4a4acb9f023)); // TEMP
 }
@@ -82,6 +85,8 @@ void NgAccess::writeAuthData ()
 
 void NgAccess::startAuthetication(QString login, QString password)
 {
+    std::cout << "[NGAuth] Sending request for cookies";
+
     _error = QString::fromUtf8("");
     _received = QString::fromUtf8("");
 
@@ -151,15 +156,17 @@ void NgAccess::onReplyFinished ()
         return;
     }
 
+    std::cout << "[NGAuth] Sending auth request";
+
     // Make second (final) POST request if first GET one was successful.
     m_baReceived.clear();
     QUrl url;
     url.setUrl(QString::fromUtf8(NG_URL_LOGIN));
     QNetworkRequest request(url);
     QByteArray ba = QString::fromUtf8("username=").toUtf8()
-            + m_curLogin.toLatin1().toBase64(QByteArray::Base64UrlEncoding)
+            + QUrl::toPercentEncoding(m_curLogin) // to correctly replace e.g. '+' char
             + QString::fromUtf8("&password=").toUtf8()
-            + m_curPassword.toLatin1().toBase64(QByteArray::Base64UrlEncoding)
+            + QUrl::toPercentEncoding(m_curPassword)
             + QString::fromUtf8("&csrfmiddlewaretoken=").toUtf8()
             + strCsrf.toUtf8();
     request.setHeader(QNetworkRequest::ContentTypeHeader,
@@ -202,8 +209,8 @@ void NgAccess::onReply2Finished ()
         return;
     }
     QJsonObject jObj = jDoc.object();
-    if (jObj.value(QString::fromUtf8("status")).toString()
-                   != QString::fromUtf8("success"))
+    QString strObj = jObj.value(QString::fromUtf8("status")).toString();
+    if (strObj != QString::fromUtf8("success"))
     {
         _error = QString::fromUtf8(m_netReply2->errorString().toUtf8().data());
         _received = QString::fromUtf8(m_baReceived);
@@ -213,6 +220,8 @@ void NgAccess::onReply2Finished ()
         emit authFinished();
         return;
     }
+
+    std::cout << "[NGAuth] Authentication successful";
 
     m_netReply2->deleteLater();
     NgAccess::authenticated = true;

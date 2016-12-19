@@ -36,6 +36,7 @@ class INSTALLER_EXPORT NextgisAuthPage : public PackageManagerPage
     public:
      explicit NextgisAuthPage (PackageManagerCore *core);
      virtual ~NextgisAuthPage ();
+
 //     bool isComplete () const;
 
      bool validatePage ();

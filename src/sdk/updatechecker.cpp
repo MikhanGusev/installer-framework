@@ -45,6 +45,8 @@
 
 #include <iostream>
 
+#include "ngaccess.h"
+
 UpdateChecker::UpdateChecker(int &argc, char *argv[])
     : SDKApp<QCoreApplication>(argc, argv)
 {
@@ -53,6 +55,29 @@ UpdateChecker::UpdateChecker(int &argc, char *argv[])
 
 int UpdateChecker::check()
 {
+    // NGI: add NextGIS authentication before UpdateChecker::check() in a
+    // command line application.
+    // If we are still not authenticated - the app is in command line mode (any
+    // update checks in installer GUI are possible only after showing authentication
+    // page.
+    if (!NgAccess::authenticated)
+    {
+        std::cout << std::endl << "NextGIS authentication. Connecting ..." << std::endl;
+        NgAccess ngAccessPtr;
+        ngAccessPtr.readAuthData(); // read lastly saved credentials
+        QEventLoop eventLoop;
+        QObject::connect(&ngAccessPtr, SIGNAL(authFinished()),
+                         &eventLoop, SLOT(quit()));
+        QString login = QString::fromUtf8(ngAccessPtr.getCurLogin().toUtf8());
+        QString password = QString::fromUtf8(ngAccessPtr.getCurPassword().toUtf8());
+        ngAccessPtr.startAuthetication(login, password);
+        eventLoop.exec(); // wait for the end of the authentication
+        if (NgAccess::authenticated)
+            std::cout << "Authentication succeded! Checking for updates ..." << std::endl;
+        else
+            std::cout << "Authentication failed! Anyway try to check for updates ..." << std::endl;
+    }
+
     KDRunOnceChecker runCheck(qApp->applicationDirPath() + QLatin1String("/lockmyApp15021976.lock"));
     if (runCheck.isRunning(KDRunOnceChecker::ConditionFlag::Lockfile)) {
         // It is possible to install an application and thus the maintenance tool into a

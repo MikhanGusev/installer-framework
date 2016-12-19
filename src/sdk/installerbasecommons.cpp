@@ -92,8 +92,7 @@ MaintenanceGui::MaintenanceGui(PackageManagerCore *core)
         setPage(id, page);
     }
 
-    // NGI: add NextGIS authentication page and start initial authentication
-    // reading login and password from the system.
+    // NGI: add NextGIS authentication page.
     NextgisAuthPage *pageNgAuth = new NextgisAuthPage(core);
     setPage(0x500, pageNgAuth);
 

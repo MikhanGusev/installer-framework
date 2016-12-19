@@ -1944,6 +1944,10 @@ Click Next to continue installation</source>
         <translation>Авторизация успешна.
 Нажмите Далее для продолжения установки</translation>
     </message>
+    <message>
+        <source>Invalid login or password</source>
+        <translation>Неверные логин или пароль</translation>
+    </message>
 </context>
 <context>
     <name>QInstaller::PackageManagerCore</name>

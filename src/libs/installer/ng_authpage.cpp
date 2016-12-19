@@ -88,7 +88,7 @@ NextgisAuthPage::NextgisAuthPage (PackageManagerCore *core)
     lhMain->addLayout(lvAll);
     lhMain->addStretch();
 
-    //_test_textEdit->hide();
+    _test_textEdit->hide();
 
     m_ngAccessPtr = new NgAccess();
 
@@ -124,12 +124,15 @@ bool NextgisAuthPage::validatePage ()
 
     this->gui()->button(QWizard::NextButton)->setEnabled(true);
 
+    _test_textEdit->setText(NgAccess::_received);
+    //m_labInfo->setText(NgAccess::_error);
+
     if (!NgAccess::authenticated)
     {
-        m_labInfo->setText(tr("Error connecting to server"));
-
-        _test_textEdit->setText(NgAccess::_received);
-        m_labInfo->setText(NgAccess::_error);
+        if (NgAccess::_received == QString::fromUtf8("{\"status\": \"invalid login\"}"))
+            m_labInfo->setText(tr("Invalid login or password"));
+        else
+            m_labInfo->setText(tr("Error connecting to server"));
 
         // If this is not an installer:
         // Always allow to switch to the next page so user could perform an
@@ -146,5 +149,4 @@ bool NextgisAuthPage::validatePage ()
     m_ngAccessPtr->writeAuthData();
     return true;
 }
-
 
